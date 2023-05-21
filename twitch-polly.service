@@ -1,0 +1,13 @@
+[Unit]
+Description=Amazon Polly Proxy for Twitch Widgets
+After=network-online.target
+Requires=network-online.target
+
+[Service]
+User=1000
+WorkingDirectory=/opt/twitch-polly
+ExecStart=/usr/bin/env python3 twitch-polly.py
+Type=notify
+
+[Install]
+WantedBy=default.target
