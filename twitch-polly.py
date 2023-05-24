@@ -83,6 +83,13 @@ class TwitchPolly(BaseHTTPRequestHandler):
             exc=format_exc()
             self.send_error(500,explain=exc)
             return print(exc)
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header('Access-Control-Allow-Headers', 'authorization,client-id')
+        self.end_headers()
+    def end_headers(self):
+        self.send_header('Access-Control-Allow-Origin','*')
+        super().end_headers()
 
 ip=config['network'].get('IP')
 port=config['network'].getint('port')
