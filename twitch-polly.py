@@ -35,6 +35,13 @@ polly=Session(**config['AWS']).client('polly')
 class TwitchPolly(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
+            if(self.path.startswith('/twitch-polly.mjs')):
+                response=open('twitch-polly.mjs','rb').read()
+                self.send_response(200)
+                self.send_header('content-type', 'text/javascript')
+                self.send_header('content-length', len(response))
+                self.end_headers()
+                return self.wfile.write(response)
             if 'authorization' not in self.headers:
                 return self.send_error(401)
             url=config['twitch-bot-auth'].get('url')
@@ -46,10 +53,11 @@ class TwitchPolly(BaseHTTPRequestHandler):
                 return self.send_error(402,explain='user requires sub teir '+config['twitch-bot-auth'].getint('access-tier'))
             if(self.path.startswith('/synthesize_speech')):
                 args=dict(parse_qsl(urlparse(self.path).query))
-                if 'Engine' in args and args['engine'] == 'neural' and int(validation['tier']) < int(config['twitch-bot-auth']['neural-tier']):
+                if 'Engine' in args and args['Engine'] == 'neural' and int(validation['tier']) < int(config['twitch-bot-auth']['neural-tier']):
                     return self.send_error(402,explain='user requires sub teir '+config['twitch-bot-auth'].getint('neural-tier'))
                 if 'TextType' in args and args['TextType'] == 'ssml' and int(validation['tier']) < int(config['twitch-bot-auth']['ssml-tier']):
                     return self.send_error(402,explain='user requires sub teir '+config['twitch-bot-auth'].getint('ssml-tier'))
+                print(args)
                 response=polly.synthesize_speech(**args)
                 self.send_response(200)
                 self.send_header('content-type', response['ContentType'])
@@ -59,6 +67,8 @@ class TwitchPolly(BaseHTTPRequestHandler):
                 return self.wfile.write(response)
             if(self.path.startswith('/describe_voices')):
                 args=dict()
+                print(int(validation['tier']))
+                print(int(config['twitch-bot-auth']['neural-tier']))
                 if int(validation['tier']) < int(config['twitch-bot-auth']['neural-tier']):
                     args['Engine']='standard'
                 response=polly.describe_voices(**args)
@@ -81,8 +91,12 @@ class TwitchPolly(BaseHTTPRequestHandler):
             return self.wfile.write(response)
         except:
             exc=format_exc()
-            self.send_error(500,explain=exc)
-            return print(exc)
+            print(exc)
+            exc=exc.encode()
+            self.send_response(500)
+            self.send_header('content-length',len(exc))
+            self.end_headers()
+            return self.wfile.write(exc)
     def do_OPTIONS(self):
         self.send_response(204)
         self.send_header('Access-Control-Allow-Headers', 'authorization,client-id')

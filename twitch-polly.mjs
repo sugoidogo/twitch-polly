@@ -41,10 +41,10 @@ Since Aditi is bilingual and fluent in both Indian English and Hindi, this param
 SupportedEngines (list) – Specifies which engines ( standard or neural) that are supported by a given voice.
 */
 export function DescribeVoices(
+    auth_headers,
     Engine='standard',
-    LanguageCode=undefined,
-    IncludeAdditionalLanguageCodes=True,
-    auth_headers=undefined){
+    LanguageCode='',
+    IncludeAdditionalLanguageCodes=true){
         const url=new URL('/describe_voices',import.meta.url)
         url.search=new URLSearchParams({
             Engine:Engine,
@@ -130,49 +130,48 @@ Required: No
 @param {dict} auth_headers your application's authorization headers used when making Twitch API requests
 @returns {Promise<Response>} see OutputFormat parameter
 */
-export default function SynthesizeSpeech(
+export function SynthesizeSpeech(
+    auth_headers,
     Text,
     VoiceId,
     TextType='text',
     Engine='standard',
-    LanguageCode=undefined,
+    LanguageCode='',
     OutputFormat='mp3',
-    SampleRate='24000',
-    auth_headers=undefined){
+    SampleRate='24000'){
         console.debug('synthesize_speech():',Text)
         if(TextType=='ssml'){
             const openSpeak=/^< *speak *>/ig
-            const closeSpeak=/< *speak *\/ *>$/ig
+            const closeSpeak=/< *\/ *speak *>$/ig
             if(!openSpeak.test(Text)){
                 Text='<speak>'+Text
-                debug_log('added opening speech tag')
             }
             if(!closeSpeak.test(Text)){
                 Text+='</speak>'
-                debug_log('added closing speech tag')
             }
             // /(?<=< *)($1)(?= *>)/ig
             const replacements={
                 '<lang xml:lang=':/< *lang *=/ig,
                 '<prosody $1=':/< *(volume|rate|pitch|max-duration) *=/ig,
-                '<prosody/>':/< *(volume|rate|pitch|max-duration) *\/ *>/,
+                '</prosody>':/< *\/ *(volume|rate|pitch|max-duration) *>/ig,
                 '<say-as interpret-as=':/< *(interpret-as|say-as) *=/ig,
-                '<say-as/>':/< *interpret-as *\/ *>/,
+                '</say-as>':/< *\/ *interpret-as *>/ig,
                 '<sub alias=':/< *(alias|sub) *=/ig,
-                '<sub/>':/< *alias *\/ *>/ig,
+                '</sub>':/< *\/ *alias *>/ig,
                 '<w role=':/< *role *=/ig,
-                '<domain name="news">':/< *news *>/,
-                '<domain/>':/< *news *\/ *>/,
+                '<domain name="news">':/< *news *>/ig,
+                '</domain>':/< *\/ *news *>/ig,
                 'effect=$1':/(?<=< *)(drc|whispered)(?= *>)/ig,
                 '<effect name=':/< *effect *=/ig,
                 'effect phonation="soft"':/(?<=< *)(soft)(?= *>)/ig,
                 'effect vocal-tract-length':/(?<=< *)(vocal-tract-length)(?= *=)/ig,
-                'amazon:$1':/(?<=<.*)(?<!amazon:)(max-duration|VBD|VB|DT|IN|JJ|NN|DEFAULT|SENSE_1|breath|auto-breaths|domain|effect)(?=.*>)/ig,
+                'amazon:$1':/(?<=<.*= *"? *)(VBD|VB|DT|IN|JJ|NN|DEFAULT|SENSE_1)(?=.*>)/ig,
+                'amazon:$1':/(?<=<.*)(?<!amazon:)(max-duration|breath|auto-breaths|domain|effect)(?=.*>)/ig,
             }
-            for(const {replacement,regex} of replacements){
-                Text=Text.replaceAll(regex,replacement)
-                debug_log(Text)
+            for(const key in replacements){
+                Text=Text.replaceAll(replacements[key],key)
             }
+            console.debug(Text)
         }
         const url=new URL('/synthesize_speech',import.meta.url)
         url.search=new URLSearchParams({
@@ -186,3 +185,5 @@ export default function SynthesizeSpeech(
         })
         return fetch(url,{headers:auth_headers})
     }
+
+export default SynthesizeSpeech
